@@ -255,7 +255,7 @@ Transform:
   m_GameObject: {fileID: 3698515}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.70308, y: -1.42979, z: 0}
+  m_LocalPosition: {x: 0.52, y: -1.89, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -277,6 +277,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   maxSpeed: 4
+  runMultiplier: 2
   maxAcceleration: 35
   maxAirAcceleration: 20
   collisionRadius: 0.116
@@ -287,8 +288,12 @@ MonoBehaviour:
   maxAirJumps: 0
   downwardMovementMultiplier: 3
   upwardMovementMultiplier: 1.7
+  coyoteTime: 0.2
+  jumpBufferTime: 0.2
   slideSpeed: 2.6
   wallJumpLerp: 10
+  ledgeDetector: {x: 0.52, y: 0.5}
+  ledgeCollisionRadius: 0.15
 --- !u!50 &3698520
 Rigidbody2D:
   serializedVersion: 5
@@ -1361,7 +1366,7 @@ Transform:
   m_GameObject: {fileID: 1763236769}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.92, y: -1.92, z: 0}
+  m_LocalPosition: {x: 3.16, y: -1.93, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

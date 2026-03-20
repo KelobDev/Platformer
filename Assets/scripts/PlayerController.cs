@@ -12,8 +12,10 @@ public class PlayerController : MonoBehaviour
 
     [Header("Movement")]
     [SerializeField, Range(0f, 100f)] private float maxSpeed = 4f;
+    [SerializeField, Range(0f, 100f)] private float runMultiplier = 4f;
     [SerializeField, Range(0f, 100f)] private float maxAcceleration = 35f;
     [SerializeField, Range(0f, 100f)] private float maxAirAcceleration = 20f;
+    private InputAction run;
 
     [Header("Collisions")]
     [SerializeField, Range(0f, 1f)] private float collisionRadius = 0.25f;
@@ -35,6 +37,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0, 5)] private int maxAirJumps = 0;
     [SerializeField, Range(0f, 5f)] private float downwardMovementMultiplier = 3f;
     [SerializeField, Range(0f, 5f)] private float upwardMovementMultiplier = 1.7f;
+    [SerializeField, Range(0f, 1f)] private float coyoteTime = 0.2f;
+    private float coyoteTimeTimer;
+    [SerializeField, Range(0f, 1f)] private float jumpBufferTime = 0.2f;
+    private float jumpBufferTimer;
+    private bool jumped;
     private InputAction jump;
     private int jumpPhase;
     private float defaultGravityScale;
@@ -43,10 +50,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0f, 100f)] private float slideSpeed = 10;
     [SerializeField, Range(0f, 100f)] private float wallJumpLerp = 10;
     private bool onRightWall, onLeftWall;
-    private int wallSide;
-
-
     private bool desiredJump;
+
+    [Header("Ledge grabbing")]
+    [SerializeField] private Vector2 ledgeDetector;
+    [SerializeField, Range(0f, 1f)] private float ledgeCollisionRadius = 0.25f;
+    private bool ledgeDetected= false;
 
 
     private Rigidbody2D rb;
@@ -56,11 +65,14 @@ public class PlayerController : MonoBehaviour
     {
         move = playerControls.Player.Move;
         jump = playerControls.Player.Jump;
+        run = playerControls.Player.Sprint;
+        run.Enable();
         jump.Enable();
         move.Enable();
     }
     private void OnDisable()
     {
+        run.Disable();
         jump.Disable();
         move.Disable();
     }
@@ -83,10 +95,17 @@ public class PlayerController : MonoBehaviour
             || Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, groundLayer);
         onRightWall = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, groundLayer);
         onLeftWall = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, groundLayer);
+        //ledge detection
+        ledgeDetected = Physics2D.OverlapCircle((Vector2)transform.position + ledgeDetector, ledgeCollisionRadius, groundLayer);
 
         desiredJump = jump.IsPressed();
         direction = move.ReadValue<Vector2>();
         desiredVelocity = new Vector2(direction.x, 0f) * maxSpeed;
+        if (run.IsPressed())
+        {
+            desiredVelocity *= runMultiplier;
+
+        }
     }
     private void FixedUpdate()
     {
@@ -96,14 +115,33 @@ public class PlayerController : MonoBehaviour
         maxSpeedChange = acceleration * Time.deltaTime;
         velocity.x = Mathf.MoveTowards(velocity.x, desiredVelocity.x, maxSpeedChange);
 
-
+        if (jump.ReadValue<float>() == 0)
+            jumped = false;
+        if (!jumped && velocity.y > 0)
+        {
+            velocity.y -= downwardMovementMultiplier* 2 * Time.deltaTime;
+            velocity.y = Mathf.Max(velocity.y, 0f);
+        }
         if (onGround)
         {
             jumpPhase = 0;
+            coyoteTimeTimer = coyoteTime;
+
+            velocity.x = desiredVelocity.x;
+
+            if (jumpBufferTimer > 0)
+            {
+                jumpBufferTimer = 0f;
+                Jump();
+            }
+        }
+        else
+        {
+            coyoteTimeTimer -= Time.deltaTime;
         }
         if(onWall && !onGround)
         {
-            if(velocity.x !=0)
+            if(direction.x != 0)
             {
                 
                 WallSlide();
@@ -111,10 +149,24 @@ public class PlayerController : MonoBehaviour
         }
         if (desiredJump)
         {
+
             desiredJump = false;
             
-            Jump();
-            WallJump();
+            if (onWall && !onGround)
+            {
+                WallJump();
+            }
+            else
+            {
+                Jump();
+            }
+            jumped = true;
+            //jump buffer logic
+            jumpBufferTimer = jumpBufferTime;
+        }
+        else
+        {
+            jumpBufferTimer -= Time.deltaTime;
         }
         if(rb.linearVelocity.y > 0)
         {
@@ -134,7 +186,7 @@ public class PlayerController : MonoBehaviour
     //jump function
     private void Jump()
     {
-        if(onGround || jumpPhase < maxAirJumps)
+        if(onGround || jumpPhase < maxAirJumps||coyoteTimeTimer >0)
         {
             jumpPhase += 1;
             float jumpSpeed = Mathf.Sqrt(-2f * Physics2D.gravity.y*jumpHeight);
@@ -148,7 +200,7 @@ public class PlayerController : MonoBehaviour
     //wall interaction
     private void WallJump()
     {
-        if ((onWall && !onGround) || jumpPhase < maxAirJumps)
+        if ((onWall || jumpPhase < maxAirJumps) && !onGround && !jumped)
         {
             int wallDir = onRightWall ? -1 : 1;
             jumpPhase += 1;
@@ -168,7 +220,7 @@ public class PlayerController : MonoBehaviour
         bool pushingWall = (velocity.x == 0 && onRightWall) || (velocity.x == 0 && onLeftWall);
 
         float push = pushingWall ? 0 : velocity.x;
-        velocity = new Vector2(push, -slideSpeed);
+        velocity.y = Mathf.Max(velocity.y, -slideSpeed);
     }
     //display gorund detect points
     private void OnDrawGizmos()
@@ -180,6 +232,7 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere((Vector2)transform.position + bottomOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + rightOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + leftOffset, collisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + ledgeDetector, ledgeCollisionRadius);
     }
 
 }
