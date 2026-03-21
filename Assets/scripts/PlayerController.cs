@@ -7,14 +7,14 @@ public class PlayerController : MonoBehaviour
     [Header("Layers")]
     [SerializeField] private LayerMask groundLayer;
 
-    [Header("InputSystem")]
-    public PlayerInputAction playerControls;
 
     [Header("Movement")]
     [SerializeField, Range(0f, 100f)] private float maxSpeed = 4f;
     [SerializeField, Range(0f, 100f)] private float runMultiplier = 4f;
     [SerializeField, Range(0f, 100f)] private float maxAcceleration = 35f;
     [SerializeField, Range(0f, 100f)] private float maxAirAcceleration = 20f;
+    [SerializeField, Range(0f, 100f)] private float maxCrouchAcceleration = 20f;
+    private bool crouching = false;
     private InputAction run;
 
     [Header("Collisions")]
@@ -24,6 +24,7 @@ public class PlayerController : MonoBehaviour
 
 
     private  InputAction move;
+    private InputAction crouch;
 
     private Vector2 direction;
     private Vector2 desiredVelocity;
@@ -40,6 +41,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float coyoteTime = 0.2f;
     private float coyoteTimeTimer;
     [SerializeField, Range(0f, 1f)] private float jumpBufferTime = 0.2f;
+    [SerializeField] private Collider2D CrouchCollider;
     private float jumpBufferTimer;
     private bool jumped;
     private InputAction jump;
@@ -65,6 +67,7 @@ public class PlayerController : MonoBehaviour
 
 
     private Rigidbody2D rb;
+    private PlayerInputAction playerControls;
 
 
     private void OnEnable()
@@ -72,12 +75,15 @@ public class PlayerController : MonoBehaviour
         move = playerControls.Player.Move;
         jump = playerControls.Player.Jump;
         run = playerControls.Player.Sprint;
+        crouch = playerControls.Player.Crouch;
+        crouch.Enable();
         run.Enable();
         jump.Enable();
         move.Enable();
     }
     private void OnDisable()
     {
+        crouch.Disable();
         run.Disable();
         jump.Disable();
         move.Disable();
@@ -102,7 +108,7 @@ public class PlayerController : MonoBehaviour
         onRightWall = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, groundLayer);
         onLeftWall = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, groundLayer);
         //ledge detection
-        if (canDetect)
+        if (canDetect && !crouching)
         {
             leftLedgeDetected = Physics2D.OverlapCircle((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius, groundLayer);
             rightLedgeDetected =  Physics2D.OverlapCircle((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius, groundLayer);
@@ -111,6 +117,7 @@ public class PlayerController : MonoBehaviour
 
         desiredJump = jump.IsPressed();
         direction = move.ReadValue<Vector2>();
+        crouching = crouch.IsPressed();
         desiredVelocity = new Vector2(direction.x, 0f) * maxSpeed;
         if (run.IsPressed())
         {
@@ -123,9 +130,7 @@ public class PlayerController : MonoBehaviour
     {
         velocity = rb.linearVelocity;
 
-        acceleration = onGround ? maxAcceleration : maxAirAcceleration;
-        maxSpeedChange = acceleration * Time.deltaTime;
-        velocity.x = Mathf.MoveTowards(velocity.x, desiredVelocity.x, maxSpeedChange);
+        Move();
 
         if (jump.ReadValue<float>() == 0)
             jumped = false;
@@ -199,7 +204,22 @@ public class PlayerController : MonoBehaviour
         }
         rb.linearVelocity = velocity;
     }
+    //Move function
+    private void Move()
+    {
+        acceleration = onGround ?  crouching ?  maxCrouchAcceleration : maxAcceleration : maxAirAcceleration;
+        if (crouching)
+        {
 
+            CrouchCollider.enabled = false;
+        }
+        else
+        {
+            CrouchCollider.enabled = true;
+        }
+        maxSpeedChange = acceleration * Time.deltaTime;
+        velocity.x = Mathf.MoveTowards(velocity.x, desiredVelocity.x, maxSpeedChange);
+    }
     //jump function
     private void Jump()
     {
