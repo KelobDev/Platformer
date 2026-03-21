@@ -53,9 +53,15 @@ public class PlayerController : MonoBehaviour
     private bool desiredJump;
 
     [Header("Ledge grabbing")]
-    [SerializeField] private Vector2 ledgeDetector;
+    [SerializeField] private Vector2 rightLedgeDetector, leftLedgeDetector;
     [SerializeField, Range(0f, 1f)] private float ledgeCollisionRadius = 0.25f;
-    private bool ledgeDetected= false;
+    private bool leftLedgeDetected = false, rightLedgeDetected = false;
+    private bool canDetect;
+
+    [SerializeField] private Vector2 ledgeOffset1, ledgeOffset2;
+    private Vector2 climbBeginPos, climbOverPos;
+
+    private bool canGrabLedge = true, canClimb;
 
 
     private Rigidbody2D rb;
@@ -96,7 +102,12 @@ public class PlayerController : MonoBehaviour
         onRightWall = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, groundLayer);
         onLeftWall = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, groundLayer);
         //ledge detection
-        ledgeDetected = Physics2D.OverlapCircle((Vector2)transform.position + ledgeDetector, ledgeCollisionRadius, groundLayer);
+        if (canDetect)
+        {
+            leftLedgeDetected = Physics2D.OverlapCircle((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius, groundLayer);
+            rightLedgeDetected =  Physics2D.OverlapCircle((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius, groundLayer);
+
+        }
 
         desiredJump = jump.IsPressed();
         direction = move.ReadValue<Vector2>();
@@ -106,6 +117,7 @@ public class PlayerController : MonoBehaviour
             desiredVelocity *= runMultiplier;
 
         }
+        CheckForLedge();
     }
     private void FixedUpdate()
     {
@@ -149,7 +161,12 @@ public class PlayerController : MonoBehaviour
         }
         if (desiredJump)
         {
-
+            if (canClimb)
+            {
+                //system for now that I don't have an animation
+                LedgeClimbOver();
+                return;
+            }
             desiredJump = false;
             
             if (onWall && !onGround)
@@ -232,7 +249,51 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere((Vector2)transform.position + bottomOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + rightOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + leftOffset, collisionRadius);
-        Gizmos.DrawWireSphere((Vector2)transform.position + ledgeDetector, ledgeCollisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius);
     }
 
+    //ledge grab system
+    private void CheckForLedge()
+    {
+        if(leftLedgeDetected && canGrabLedge)
+        {
+            canGrabLedge = false;
+
+            climbBeginPos = (Vector2)this.transform.position + ledgeOffset1;
+            climbOverPos = (Vector2)this.transform.position +new Vector2(-ledgeOffset2.x, ledgeOffset2.y);
+
+            canClimb = true;
+
+        }
+        else if(rightLedgeDetected && canGrabLedge)
+        {
+            canGrabLedge = false;
+
+
+            climbBeginPos = (Vector2)this.transform.position + ledgeOffset1;
+            climbOverPos = (Vector2)this.transform.position + ledgeOffset2;
+
+            canClimb = true;
+        }
+
+        if (canClimb)
+        {
+            transform.position = climbBeginPos;
+        }
+    }
+    private void LedgeClimbOver()
+    {
+        canClimb = false;
+        transform.position = climbOverPos;
+        canGrabLedge = true;
+    }
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Ground")) canDetect = false;
+    }
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Ground")) canDetect = true;
+    }
 }
