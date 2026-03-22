@@ -14,8 +14,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0f, 100f)] private float maxAcceleration = 35f;
     [SerializeField, Range(0f, 100f)] private float maxAirAcceleration = 20f;
     [SerializeField, Range(0f, 100f)] private float maxCrouchAcceleration = 20f;
-    private bool crouching = false;
+    
     private InputAction run;
+    [Header("Crouching")]
+    [SerializeField] private Collider2D CrouchCollider;
+    [SerializeField] private Vector2 ceelingOffset;
+    private bool crouching = false;
+    private bool wantsToCrouch;
+    private InputAction crouch;
 
     [Header("Collisions")]
     [SerializeField, Range(0f, 1f)] private float collisionRadius = 0.25f;
@@ -24,7 +30,7 @@ public class PlayerController : MonoBehaviour
 
 
     private  InputAction move;
-    private InputAction crouch;
+    
 
     private Vector2 direction;
     private Vector2 desiredVelocity;
@@ -41,7 +47,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float coyoteTime = 0.2f;
     private float coyoteTimeTimer;
     [SerializeField, Range(0f, 1f)] private float jumpBufferTime = 0.2f;
-    [SerializeField] private Collider2D CrouchCollider;
     private float jumpBufferTimer;
     private bool jumped;
     private InputAction jump;
@@ -65,6 +70,11 @@ public class PlayerController : MonoBehaviour
 
     private bool canGrabLedge = true, canClimb;
 
+    [Header("Fighting")]
+    [SerializeField] private Vector2 attackPoint;
+
+    private InputAction attack;
+
 
     private Rigidbody2D rb;
     private PlayerInputAction playerControls;
@@ -72,6 +82,8 @@ public class PlayerController : MonoBehaviour
 
     private void OnEnable()
     {
+        attack = playerControls.Player.Attack;
+        attack.performed += Attack;
         move = playerControls.Player.Move;
         jump = playerControls.Player.Jump;
         run = playerControls.Player.Sprint;
@@ -79,10 +91,12 @@ public class PlayerController : MonoBehaviour
         crouch.Enable();
         run.Enable();
         jump.Enable();
+        attack.Enable();
         move.Enable();
     }
     private void OnDisable()
     {
+        attack.Disable();
         crouch.Disable();
         run.Disable();
         jump.Disable();
@@ -116,8 +130,8 @@ public class PlayerController : MonoBehaviour
         }
 
         desiredJump = jump.IsPressed();
+        wantsToCrouch = crouch.IsPressed();
         direction = move.ReadValue<Vector2>();
-        crouching = crouch.IsPressed();
         desiredVelocity = new Vector2(direction.x, 0f) * maxSpeed;
         if (run.IsPressed())
         {
@@ -129,9 +143,8 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         velocity = rb.linearVelocity;
-
         Move();
-
+        #region jumping
         if (jump.ReadValue<float>() == 0)
             jumped = false;
         if (!jumped && velocity.y > 0)
@@ -202,11 +215,24 @@ public class PlayerController : MonoBehaviour
         {
             rb.gravityScale = defaultGravityScale;
         }
+        #endregion
         rb.linearVelocity = velocity;
     }
     //Move function
     private void Move()
     {
+        //check if I can stand up again
+        if (wantsToCrouch)
+        {
+            crouching = true;
+        }
+        else
+        {
+            if (!Physics2D.OverlapCircle((Vector2)transform.position + ceelingOffset, collisionRadius, groundLayer))
+            {
+                crouching = false;
+            }
+        }
         acceleration = onGround ?  crouching ?  maxCrouchAcceleration : maxAcceleration : maxAirAcceleration;
         if (crouching)
         {
@@ -269,6 +295,7 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere((Vector2)transform.position + bottomOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + rightOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + leftOffset, collisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + ceelingOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius);
     }
@@ -315,5 +342,25 @@ public class PlayerController : MonoBehaviour
     private void OnTriggerExit2D(Collider2D collision)
     {
         if (collision.gameObject.layer == LayerMask.NameToLayer("Ground")) canDetect = true;
+    }
+
+    //attacking
+    private void Attack(InputAction.CallbackContext ctx)
+    {
+
+        if (onGround)
+        {
+            //attack on ground
+        }
+        else if(!onGround && attackPoint.y <0)
+        {
+            //groundPound
+        }
+        Debug.Log("Puk puk puk puk, hahaha!");
+        
+    }
+    private void GroundPound()
+    {
+        //check if player
     }
 }

@@ -284,6 +284,8 @@ MonoBehaviour:
   maxAcceleration: 35
   maxAirAcceleration: 20
   maxCrouchAcceleration: 20
+  CrouchCollider: {fileID: 3698525}
+  ceelingOffset: {x: 0, y: 1}
   collisionRadius: 0.116
   bottomOffset: {x: 0, y: -1}
   rightOffset: {x: 0.5, y: 0}
@@ -294,7 +296,6 @@ MonoBehaviour:
   upwardMovementMultiplier: 1.7
   coyoteTime: 0.2
   jumpBufferTime: 0.2
-  CrouchCollider: {fileID: 3698525}
   slideSpeed: 2.6
   wallJumpLerp: 10
   rightLedgeDetector: {x: 0.5, y: 1}
