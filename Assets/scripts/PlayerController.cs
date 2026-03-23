@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -72,7 +73,12 @@ public class PlayerController : MonoBehaviour
 
     [Header("Fighting")]
     [SerializeField] private Vector2 attackPoint;
+    [SerializeField, Range(0f, 1f)] private float attackRadius;
+    [SerializeField] private LayerMask enemyLayer;
 
+    private bool groundPound;
+
+    private InputAction point;
     private InputAction attack;
 
 
@@ -83,11 +89,13 @@ public class PlayerController : MonoBehaviour
     private void OnEnable()
     {
         attack = playerControls.Player.Attack;
+        point = playerControls.Player.Look;
         attack.performed += Attack;
         move = playerControls.Player.Move;
         jump = playerControls.Player.Jump;
         run = playerControls.Player.Sprint;
         crouch = playerControls.Player.Crouch;
+        point.Enable();
         crouch.Enable();
         run.Enable();
         jump.Enable();
@@ -101,6 +109,7 @@ public class PlayerController : MonoBehaviour
         run.Disable();
         jump.Disable();
         move.Disable();
+        point.Disable();
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -133,7 +142,8 @@ public class PlayerController : MonoBehaviour
         wantsToCrouch = crouch.IsPressed();
         direction = move.ReadValue<Vector2>();
         desiredVelocity = new Vector2(direction.x, 0f) * maxSpeed;
-        if (run.IsPressed())
+        SetAttackPoint();
+        if (run.IsPressed() && !crouching)
         {
             desiredVelocity *= runMultiplier;
 
@@ -143,7 +153,9 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         velocity = rb.linearVelocity;
-        Move();
+        if(!groundPound)
+            Move();
+        GroundPound();
         #region jumping
         if (jump.ReadValue<float>() == 0)
             jumped = false;
@@ -154,6 +166,7 @@ public class PlayerController : MonoBehaviour
         }
         if (onGround)
         {
+            groundPound = false;
             jumpPhase = 0;
             coyoteTimeTimer = coyoteTime;
 
@@ -293,6 +306,7 @@ public class PlayerController : MonoBehaviour
         var positions = new Vector2[] { bottomOffset, rightOffset, leftOffset };
 
         Gizmos.DrawWireSphere((Vector2)transform.position + bottomOffset, collisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + attackPoint, attackRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + rightOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + leftOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + ceelingOffset, collisionRadius);
@@ -350,17 +364,39 @@ public class PlayerController : MonoBehaviour
 
         if (onGround)
         {
-            //attack on ground
+            if(Physics2D.OverlapCircle((Vector2)transform.position+attackPoint, attackRadius, enemyLayer))
+            {
+                Debug.Log("Atak");
+            }
         }
         else if(!onGround && attackPoint.y <0)
         {
             //groundPound
+            groundPound = true;
         }
-        Debug.Log("Puk puk puk puk, hahaha!");
         
+        
+    }
+    private void SetAttackPoint()
+    {
+        if (move.ReadValue<Vector2>().x < 0f )
+            attackPoint = new Vector2(-1, 0);
+        else if (move.ReadValue<Vector2>().y < 0f)
+            attackPoint = new Vector2(0, -1);
+        else if (move.ReadValue<Vector2>().y > 0f)
+            attackPoint = new Vector2(0, 1);
+        else 
+            attackPoint = new Vector2(1, 0);
     }
     private void GroundPound()
     {
-        //check if player
+        if (groundPound)
+        {
+            velocity.y -= downwardMovementMultiplier*100 * Time.deltaTime;
+            if (Physics2D.OverlapCircle((Vector2)transform.position + attackPoint, attackRadius, enemyLayer))
+            {
+                Debug.Log("Atak");
+            }
+        }
     }
 }
