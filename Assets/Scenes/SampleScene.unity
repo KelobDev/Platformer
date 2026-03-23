@@ -137,6 +137,7 @@ GameObject:
   - component: {fileID: 3698523}
   - component: {fileID: 3698524}
   - component: {fileID: 3698525}
+  - component: {fileID: 3698526}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -303,6 +304,12 @@ MonoBehaviour:
   ledgeCollisionRadius: 0.164
   ledgeOffset1: {x: 0, y: 0}
   ledgeOffset2: {x: 1, y: 1}
+  attackPoint: {x: 1, y: 0}
+  attackRadius: 0.7
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  anim: {fileID: 0}
 --- !u!50 &3698520
 Rigidbody2D:
   serializedVersion: 5
@@ -608,6 +615,28 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!95 &3698526
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3698515}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: a9db0abe38834a14ab5fd08907b2db77, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &71365769
 GameObject:
   m_ObjectHideFlags: 0

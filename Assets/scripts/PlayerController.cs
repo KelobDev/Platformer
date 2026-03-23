@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Tilemaps;
 
 
 public class PlayerController : MonoBehaviour
@@ -8,6 +9,7 @@ public class PlayerController : MonoBehaviour
     [Header("Layers")]
     [SerializeField] private LayerMask groundLayer;
 
+    [Space]
 
     [Header("Movement")]
     [SerializeField, Range(0f, 100f)] private float maxSpeed = 4f;
@@ -15,6 +17,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0f, 100f)] private float maxAcceleration = 35f;
     [SerializeField, Range(0f, 100f)] private float maxAirAcceleration = 20f;
     [SerializeField, Range(0f, 100f)] private float maxCrouchAcceleration = 20f;
+    
     
     private InputAction run;
     [Header("Crouching")]
@@ -81,6 +84,9 @@ public class PlayerController : MonoBehaviour
     private InputAction point;
     private InputAction attack;
 
+    [Header("Animations")]
+    [SerializeField] private Animator anim;
+    private int face = 1;
 
     private Rigidbody2D rb;
     private PlayerInputAction playerControls;
@@ -117,6 +123,7 @@ public class PlayerController : MonoBehaviour
     {
         playerControls = new PlayerInputAction();
         rb = GetComponent<Rigidbody2D>();
+        anim = GetComponent<Animator>();
         defaultGravityScale = 1f;
     }
 
@@ -229,7 +236,21 @@ public class PlayerController : MonoBehaviour
             rb.gravityScale = defaultGravityScale;
         }
         #endregion
+        Animate();
         rb.linearVelocity = velocity;
+    }
+    private void Animate() { 
+        if(face != Mathf.Sign(velocity.x) && velocity.x !=0)
+        {
+            face *= -1;
+            Vector3 scale = transform.localScale;
+            scale.x= face;
+            transform.localScale = scale;
+        }
+        anim.SetBool("OnGround", onGround);
+        anim.SetBool("Crouch", crouching);
+        anim.SetFloat("Jump", velocity.y);
+        anim.SetFloat("Speed", Mathf.Abs(velocity.x));
     }
     //Move function
     private void Move()
