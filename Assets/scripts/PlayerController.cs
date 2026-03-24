@@ -78,6 +78,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Vector2 attackPoint;
     [SerializeField, Range(0f, 1f)] private float attackRadius;
     [SerializeField] private LayerMask enemyLayer;
+    [SerializeField] private Tilemap destructables;//for destroying elemmts by punching
+
 
     private bool groundPound;
 
@@ -385,10 +387,7 @@ public class PlayerController : MonoBehaviour
 
         if (onGround)
         {
-            if(Physics2D.OverlapCircle((Vector2)transform.position+attackPoint, attackRadius, enemyLayer))
-            {
-                Debug.Log("Atak");
-            }
+            ExectueAttack();
         }
         else if(!onGround && attackPoint.y <0)
         {
@@ -397,6 +396,34 @@ public class PlayerController : MonoBehaviour
         }
         
         
+    }
+    void ExectueAttack()
+    {
+        //fight with enemies
+        if (Physics2D.OverlapCircle((Vector2)transform.position + attackPoint, attackRadius, enemyLayer))
+        {
+            Debug.Log("Atak");
+        }
+        //destroy objects
+        Vector2 center = (Vector2)transform.position + attackPoint;
+        //iloœæ sprawdzanych punktów
+        int checks = 20;
+
+        for (int i = 0; i < checks; i++)
+        {
+            float angle = i * Mathf.PI * 2 / checks;
+            Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+
+            Vector2 point = center + dir * attackRadius;
+
+            Vector3Int cellPos = destructables.WorldToCell(point);
+            //sprawcamy czy nasz kafelek znajduje siê w zasiêgu punktu ataku
+            if (destructables.HasTile(cellPos))
+            {
+                destructables.SetTile(cellPos, null);
+                Debug.Log("Puk puk puk puk");
+            }
+        }
     }
     private void SetAttackPoint()
     {
@@ -414,10 +441,7 @@ public class PlayerController : MonoBehaviour
         if (groundPound)
         {
             velocity.y -= downwardMovementMultiplier*100 * Time.deltaTime;
-            if (Physics2D.OverlapCircle((Vector2)transform.position + attackPoint, attackRadius, enemyLayer))
-            {
-                Debug.Log("Atak");
-            }
+            ExectueAttack();
         }
     }
 }
