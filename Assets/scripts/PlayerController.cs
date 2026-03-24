@@ -2,12 +2,14 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Tilemaps;
+using UnityEngine.UIElements;
 
 
 public class PlayerController : MonoBehaviour
 {
     [Header("Layers")]
     [SerializeField] private LayerMask groundLayer;
+    [SerializeField] private LayerMask enemyLayer;
 
     [Space]
 
@@ -77,7 +79,6 @@ public class PlayerController : MonoBehaviour
     [Header("Fighting")]
     [SerializeField] private Vector2 attackPoint;
     [SerializeField, Range(0f, 1f)] private float attackRadius;
-    [SerializeField] private LayerMask enemyLayer;
     [SerializeField] private Tilemap destructables;//for destroying elemmts by punching
 
 
@@ -399,10 +400,17 @@ public class PlayerController : MonoBehaviour
     }
     void ExectueAttack()
     {
+        Collider2D hit = Physics2D.OverlapCircle((Vector2)transform.position + attackPoint, attackRadius, enemyLayer);
+
         //fight with enemies
-        if (Physics2D.OverlapCircle((Vector2)transform.position + attackPoint, attackRadius, enemyLayer))
+        if (hit!= null)
         {
             Debug.Log("Atak");
+            ///get enemy we hited
+            //EnemyController enemy = hit.GetComponent<EnemyController>();
+            //take damage
+            //enemy.TakeDamage(1);
+
         }
         //destroy objects
         Vector2 center = (Vector2)transform.position + attackPoint;
