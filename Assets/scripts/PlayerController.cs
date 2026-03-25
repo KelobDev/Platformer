@@ -89,7 +89,12 @@ public class PlayerController : MonoBehaviour
 
     [Header("Animations")]
     [SerializeField] private Animator anim;
-    private int face = 1;
+    public int face = 1;
+
+    [Header("Camera system")]
+    [SerializeField] private GameObject cameraFollowObj;
+    private CameraFollow camFollow;
+    private float fallSpeedYDampingChangeThreshold;
 
     private Rigidbody2D rb;
     private PlayerInputAction playerControls;
@@ -128,6 +133,8 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         defaultGravityScale = 1f;
+        camFollow = cameraFollowObj.GetComponent<CameraFollow>();
+        fallSpeedYDampingChangeThreshold = CameraManager.instance.fallSpeedYDampingChangeThreshold;
     }
 
     // Update is called once per frame
@@ -159,6 +166,16 @@ public class PlayerController : MonoBehaviour
 
         }
         CheckForLedge();
+        //update camera
+        if(rb.linearVelocity.y < fallSpeedYDampingChangeThreshold && !CameraManager.instance.IsLerpingYDamping && !CameraManager.instance.LerpedFromPlayerFalling)
+        {
+            CameraManager.instance.LerpYDamping(true);
+        }
+        if(rb.linearVelocity.y >=0f && !CameraManager.instance.IsLerpingYDamping && CameraManager.instance.LerpedFromPlayerFalling)
+        {
+            CameraManager.instance.LerpedFromPlayerFalling = false;
+            CameraManager.instance.LerpYDamping(false);
+        }
     }
     private void FixedUpdate()
     {
@@ -249,6 +266,7 @@ public class PlayerController : MonoBehaviour
             Vector3 scale = transform.localScale;
             scale.x= face;
             transform.localScale = scale;
+            camFollow.CallTurn();
         }
         anim.SetBool("OnGround", onGround);
         anim.SetBool("Crouch", crouching);
