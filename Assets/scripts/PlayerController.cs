@@ -194,6 +194,7 @@ public class PlayerController : MonoBehaviour
     }
     private void FixedUpdate()
     {
+
         velocity = rb.linearVelocity;
         if(!groundPound)
             Move();
@@ -369,6 +370,7 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere((Vector2)transform.position + ceelingOffset, collisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius);
+        Gizmos.DrawWireSphere(climbOverPos, collisionRadius);//debugging for climbing ledges
     }
 
     //ledge grab system
@@ -381,7 +383,12 @@ public class PlayerController : MonoBehaviour
             climbBeginPos = (Vector2)this.transform.position + ledgeOffset1;
             climbOverPos = (Vector2)this.transform.position +new Vector2(-ledgeOffset2.x, ledgeOffset2.y);
 
-            canClimb = true;
+            if(!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) == null)
+            {
+                canGrabLedge = true;
+                return;
+            }
+            canClimb = true; 
 
         }
         else if(rightLedgeDetected && canGrabLedge)
@@ -392,6 +399,11 @@ public class PlayerController : MonoBehaviour
             climbBeginPos = (Vector2)this.transform.position + ledgeOffset1;
             climbOverPos = (Vector2)this.transform.position + ledgeOffset2;
 
+            if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) == null)
+            {
+                canGrabLedge = true;
+                return;
+            }
             canClimb = true;
         }
 
@@ -403,6 +415,7 @@ public class PlayerController : MonoBehaviour
     private void LedgeClimbOver()
     {
         canClimb = false;
+        velocity= new Vector2 (0,0);
         transform.position = climbOverPos;
         canGrabLedge = true;
     }
@@ -439,10 +452,11 @@ public class PlayerController : MonoBehaviour
         if (hit!= null)
         {
             Debug.Log("Atak");
-            ///get enemy we hited
-            //EnemyController enemy = hit.GetComponent<EnemyController>();
+            //get enemy we hited
+            EnemyController enemy = hit.GetComponent<EnemyController>();
             //take damage
-            //enemy.TakeDamage(1);
+            if(enemy != null) 
+                enemy.TakeDamage(1);
 
         }
         //destroy objects
@@ -474,7 +488,7 @@ public class PlayerController : MonoBehaviour
             attackPoint = new Vector2(0, -1);
         else if (move.ReadValue<Vector2>().y > 0f)
             attackPoint = new Vector2(0, 1);
-        else 
+        else if(move.ReadValue<Vector2>().x > 0f)
             attackPoint = new Vector2(1, 0);
     }
     private void GroundPound()

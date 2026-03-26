@@ -22,6 +22,7 @@ public class CameraManager : MonoBehaviour
     {
         if (instance == null) 
             instance = this;
+        Debug.Log("CameraManager Awake: " + gameObject.name);
         framingTransposer = cam.GetCinemachineComponent<CinemachineFramingTransposer>();
     }
 
