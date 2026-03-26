@@ -133,8 +133,23 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         defaultGravityScale = 1f;
-        camFollow = cameraFollowObj.GetComponent<CameraFollow>();
-        fallSpeedYDampingChangeThreshold = CameraManager.instance.fallSpeedYDampingChangeThreshold;
+        if (cameraFollowObj != null)
+        {
+            camFollow = cameraFollowObj.GetComponent<CameraFollow>();
+        }
+        else
+        {
+            Debug.LogError("Brak cameraFollowObj!");
+        }
+
+        if (CameraManager.instance != null)
+        {
+            fallSpeedYDampingChangeThreshold = CameraManager.instance.fallSpeedYDampingChangeThreshold;
+        }
+        else
+        {
+            Debug.LogError("Brak CameraManager.instance!");
+        }
     }
 
     // Update is called once per frame
