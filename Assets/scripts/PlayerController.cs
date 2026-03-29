@@ -62,6 +62,7 @@ public class PlayerController : MonoBehaviour
     [Header("Wall jumping")]
     [SerializeField, Range(0f, 100f)] private float slideSpeed = 10;
     [SerializeField, Range(0f, 100f)] private float wallJumpLerp = 10;
+    [SerializeField, Range(0f, 10f)] private float wallJumpHeight = 3f;
     private bool onRightWall, onLeftWall;
     private bool desiredJump;
 
@@ -338,7 +339,7 @@ public class PlayerController : MonoBehaviour
         {
             int wallDir = onRightWall ? -1 : 1;
             jumpPhase += 1;
-            float jumpSpeed = Mathf.Sqrt(-2f * Physics2D.gravity.y * jumpHeight);
+            float jumpSpeed = Mathf.Sqrt(-2f * Physics2D.gravity.y * wallJumpHeight);
             if (velocity.y > 0f)
             {
                 jumpSpeed = Mathf.Max(jumpSpeed - velocity.y, 0);
@@ -376,14 +377,16 @@ public class PlayerController : MonoBehaviour
     //ledge grab system
     private void CheckForLedge()
     {
-        if(leftLedgeDetected && canGrabLedge)
+        bool notUnderGround = !Physics2D.OverlapCircle((Vector2)transform.position + ceelingOffset, collisionRadius, groundLayer);
+        if (leftLedgeDetected && canGrabLedge)
         {
+            
             canGrabLedge = false;
 
             climbBeginPos = (Vector2)this.transform.position + ledgeOffset1;
             climbOverPos = (Vector2)this.transform.position +new Vector2(-ledgeOffset2.x, ledgeOffset2.y);
 
-            if(!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) == null)
+            if(!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) == null && notUnderGround)
             {
                 canGrabLedge = true;
                 return;
@@ -395,11 +398,11 @@ public class PlayerController : MonoBehaviour
         {
             canGrabLedge = false;
 
-
+            
             climbBeginPos = (Vector2)this.transform.position + ledgeOffset1;
             climbOverPos = (Vector2)this.transform.position + ledgeOffset2;
 
-            if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) == null)
+            if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) == null && notUnderGround)
             {
                 canGrabLedge = true;
                 return;
