@@ -11,17 +11,20 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private LayerMask enemyLayer;
 
-    [Space]
-
     [Header("Movement")]
     [SerializeField, Range(0f, 100f)] private float maxSpeed = 4f;
     [SerializeField, Range(0f, 100f)] private float runMultiplier = 4f;
     [SerializeField, Range(0f, 100f)] private float maxAcceleration = 35f;
     [SerializeField, Range(0f, 100f)] private float maxAirAcceleration = 20f;
     [SerializeField, Range(0f, 100f)] private float maxCrouchAcceleration = 20f;
-    
-    
     private InputAction run;
+    private  InputAction move;
+    private Vector2 direction;
+    private Vector2 desiredVelocity;
+    private Vector2 velocity;
+    private float maxSpeedChange;
+    private float acceleration;
+    
     [Header("Crouching")]
     [SerializeField] private Collider2D CrouchCollider;
     [SerializeField] private Vector2 ceelingOffset;
@@ -34,25 +37,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Vector2 bottomOffset, rightOffset, leftOffset;
     private bool onGround, onWall;
 
-
-    private  InputAction move;
-    
-
-    private Vector2 direction;
-    private Vector2 desiredVelocity;
-    private Vector2 velocity;
-
-    private float maxSpeedChange;
-    private float acceleration;
-
     [Header("Jumping")]
     [SerializeField, Range(0f, 10f)] private float jumpHeight = 3f;
     [SerializeField, Range(0, 5)] private int maxAirJumps = 0;
     [SerializeField, Range(0f, 5f)] private float downwardMovementMultiplier = 3f;
     [SerializeField, Range(0f, 5f)] private float upwardMovementMultiplier = 1.7f;
     [SerializeField, Range(0f, 1f)] private float coyoteTime = 0.2f;
-    private float coyoteTimeTimer;
     [SerializeField, Range(0f, 1f)] private float jumpBufferTime = 0.2f;
+    private float coyoteTimeTimer;
     private float jumpBufferTimer;
     private bool jumped;
     private InputAction jump;
@@ -71,21 +63,15 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float ledgeCollisionRadius = 0.25f;
     private bool leftLedgeDetected = false, rightLedgeDetected = false;
     private bool canDetect;
-
     [SerializeField] private Vector2 ledgeOffset1, ledgeOffset2;
     private Vector2 climbBeginPos, climbOverPos;
-
     private bool canGrabLedge = true, canClimb;
 
     [Header("Fighting")]
     [SerializeField] private Vector2 attackPoint;
     [SerializeField, Range(0f, 1f)] private float attackRadius;
     [SerializeField] private Tilemap destructables;//for destroying elemmts by punching
-
-
     private bool groundPound;
-
-    private InputAction point;
     private InputAction attack;
 
     [Header("Animations")]
@@ -100,17 +86,15 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private PlayerInputAction playerControls;
 
-
+    #region Setup Inputs
     private void OnEnable()
     {
         attack = playerControls.Player.Attack;
-        point = playerControls.Player.Look;
         attack.performed += Attack;
         move = playerControls.Player.Move;
         jump = playerControls.Player.Jump;
         run = playerControls.Player.Sprint;
         crouch = playerControls.Player.Crouch;
-        point.Enable();
         crouch.Enable();
         run.Enable();
         jump.Enable();
@@ -124,9 +108,8 @@ public class PlayerController : MonoBehaviour
         run.Disable();
         jump.Disable();
         move.Disable();
-        point.Disable();
     }
-
+    #endregion
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Awake()
     {
@@ -156,6 +139,7 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        #region collision system
         //checks if player is touching ground
         onGround = Physics2D.OverlapCircle((Vector2)transform.position + bottomOffset, collisionRadius, groundLayer);
         //checks if player is touching wall
@@ -170,7 +154,9 @@ public class PlayerController : MonoBehaviour
             rightLedgeDetected =  Physics2D.OverlapCircle((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius, groundLayer);
 
         }
+        #endregion
 
+        #region input system
         desiredJump = jump.IsPressed();
         wantsToCrouch = crouch.IsPressed();
         direction = move.ReadValue<Vector2>();
@@ -181,9 +167,11 @@ public class PlayerController : MonoBehaviour
             desiredVelocity *= runMultiplier;
 
         }
+        #endregion
         CheckForLedge();
+        #region camera system
         //update camera
-        if(rb.linearVelocity.y < fallSpeedYDampingChangeThreshold && !CameraManager.instance.IsLerpingYDamping && !CameraManager.instance.LerpedFromPlayerFalling)
+        if (rb.linearVelocity.y < fallSpeedYDampingChangeThreshold && !CameraManager.instance.IsLerpingYDamping && !CameraManager.instance.LerpedFromPlayerFalling)
         {
             CameraManager.instance.LerpYDamping(true);
         }
@@ -192,11 +180,12 @@ public class PlayerController : MonoBehaviour
             CameraManager.instance.LerpedFromPlayerFalling = false;
             CameraManager.instance.LerpYDamping(false);
         }
+        #endregion
     }
     private void FixedUpdate()
     {
 
-        velocity = rb.linearVelocity;
+        velocity = rb.linearVelocity;//get players velocity to work on it
         if(!groundPound)
             Move();
         GroundPound();
@@ -210,12 +199,13 @@ public class PlayerController : MonoBehaviour
         }
         if (onGround)
         {
-            groundPound = false;
+            groundPound = false;//can't ground pound anymore
             jumpPhase = 0;
-            coyoteTimeTimer = coyoteTime;
+            coyoteTimeTimer = coyoteTime;//reset coyoteTimer
 
             velocity.x = desiredVelocity.x;
 
+            //if we just landed and wanted to jump
             if (jumpBufferTimer > 0)
             {
                 jumpBufferTimer = 0f;
@@ -230,7 +220,6 @@ public class PlayerController : MonoBehaviour
         {
             if(direction.x != 0)
             {
-                
                 WallSlide();
             }
         }
@@ -333,6 +322,7 @@ public class PlayerController : MonoBehaviour
         }
     }
     //wall interaction
+    #region wall jump
     private void WallJump()
     {
         if ((onWall || jumpPhase < maxAirJumps) && !onGround && !jumped)
@@ -345,7 +335,7 @@ public class PlayerController : MonoBehaviour
                 jumpSpeed = Mathf.Max(jumpSpeed - velocity.y, 0);
             }
             velocity.y += jumpSpeed;
-            velocity.x = wallDir * wallJumpLerp; 
+            velocity.x += wallDir * wallJumpLerp; 
 
         }
 
@@ -357,36 +347,23 @@ public class PlayerController : MonoBehaviour
         float push = pushingWall ? 0 : velocity.x;
         velocity.y = Mathf.Max(velocity.y, -slideSpeed);
     }
-    //display gorund detect points
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.red;
-
-        var positions = new Vector2[] { bottomOffset, rightOffset, leftOffset };
-
-        Gizmos.DrawWireSphere((Vector2)transform.position + bottomOffset, collisionRadius);
-        Gizmos.DrawWireSphere((Vector2)transform.position + attackPoint, attackRadius);
-        Gizmos.DrawWireSphere((Vector2)transform.position + rightOffset, collisionRadius);
-        Gizmos.DrawWireSphere((Vector2)transform.position + leftOffset, collisionRadius);
-        Gizmos.DrawWireSphere((Vector2)transform.position + ceelingOffset, collisionRadius);
-        Gizmos.DrawWireSphere((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius);
-        Gizmos.DrawWireSphere((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius);
-        Gizmos.DrawWireSphere(climbOverPos, collisionRadius);//debugging for climbing ledges
-    }
-
+    #endregion
     //ledge grab system
+    #region ledge grab
     private void CheckForLedge()
     {
+        //check if we're not trying to climb on ceeling
         bool notUnderGround = !Physics2D.OverlapCircle((Vector2)transform.position + ceelingOffset, collisionRadius, groundLayer);
         if (leftLedgeDetected && canGrabLedge)
         {
             
             canGrabLedge = false;
 
-            climbBeginPos = (Vector2)this.transform.position + ledgeOffset1;
-            climbOverPos = (Vector2)this.transform.position +new Vector2(-ledgeOffset2.x, ledgeOffset2.y);
+            climbBeginPos = (Vector2)this.transform.position + leftLedgeDetector - ledgeOffset1;
+            climbOverPos = (Vector2)this.transform.position+ leftLedgeDetector + new Vector2(-ledgeOffset2.x, ledgeOffset2.y);
 
-            if(!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) == null && notUnderGround)
+
+            if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) && notUnderGround)
             {
                 canGrabLedge = true;
                 return;
@@ -399,10 +376,12 @@ public class PlayerController : MonoBehaviour
             canGrabLedge = false;
 
             
-            climbBeginPos = (Vector2)this.transform.position + ledgeOffset1;
-            climbOverPos = (Vector2)this.transform.position + ledgeOffset2;
+            climbBeginPos = (Vector2)this.transform.position +rightLedgeDetector + ledgeOffset1;
+            climbOverPos = (Vector2)this.transform.position + rightLedgeDetector + ledgeOffset2;
+            Debug.DrawLine(transform.position, climbOverPos, Color.red);
+            Debug.DrawLine(transform.position, climbBeginPos, Color.green);
 
-            if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) == null && notUnderGround)
+            if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) && notUnderGround)
             {
                 canGrabLedge = true;
                 return;
@@ -412,7 +391,8 @@ public class PlayerController : MonoBehaviour
 
         if (canClimb)
         {
-            transform.position = climbBeginPos;
+            transform.position = climbBeginPos;//climb
+            
         }
     }
     private void LedgeClimbOver()
@@ -430,8 +410,9 @@ public class PlayerController : MonoBehaviour
     {
         if (collision.gameObject.layer == LayerMask.NameToLayer("Ground")) canDetect = true;
     }
-
+    #endregion
     //attacking
+    #region Attack
     private void Attack(InputAction.CallbackContext ctx)
     {
 
@@ -498,8 +479,31 @@ public class PlayerController : MonoBehaviour
     {
         if (groundPound)
         {
-            velocity.y -= downwardMovementMultiplier*100 * Time.deltaTime;
+            //don't go over sppeed limit to prevent being ground stuck
+            if (velocity.y > -60)
+            {
+                velocity.y -= downwardMovementMultiplier*100 * Time.deltaTime;
+                
+            }
             ExectueAttack();
         }
+    }
+    #endregion
+
+    //display gorund detect points
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+
+        var positions = new Vector2[] { bottomOffset, rightOffset, leftOffset };
+
+        Gizmos.DrawWireSphere((Vector2)transform.position + bottomOffset, collisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + attackPoint, attackRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + rightOffset, collisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + leftOffset, collisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + ceelingOffset, collisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius);
+        Gizmos.DrawWireSphere(climbOverPos, collisionRadius);//debugging for climbing ledges
     }
 }
