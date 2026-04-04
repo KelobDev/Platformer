@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Scripting.APIUpdating;
 
@@ -33,6 +34,7 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private Vector2 shootPoint;
     [SerializeField, Range(0f, 5f)] private float shootingTime = 1f;
     [SerializeField] private float shootingTimer = 0f;
+    [SerializeField] private GameObject Bullet;
 
 
     [Header("Detectors")]
@@ -46,6 +48,7 @@ public class EnemyController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         shootingTimer = shootingTime;
+        Bullet.GetComponent<BulletController>().Setup((int)shootPoint.x);
         if (type == Type.NEUTRAL)
             direction.x = 1;
     }
@@ -102,6 +105,8 @@ public class EnemyController : MonoBehaviour
         {
             shootingTimer = shootingTime;
             //summon bullet with direction to go
+            Bullet.transform.position =  new Vector3(transform.position.x + shootPoint.x, transform.position.y + shootPoint.y, 0);
+            Instantiate(Bullet);
             Debug.Log("pif paf");
 
         }
@@ -114,5 +119,6 @@ public class EnemyController : MonoBehaviour
         Gizmos.DrawWireSphere((Vector2)transform.position + leftDetector, detectorRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + rightDetector, detectorRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + groundDetector, detectorRadius);
+        Gizmos.DrawWireSphere((Vector2)transform.position + shootPoint, detectorRadius);
     }
 }

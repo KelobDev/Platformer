@@ -117,6 +117,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         defaultGravityScale = 1f;
+
         if (cameraFollowObj != null)
         {
             camFollow = cameraFollowObj.GetComponent<CameraFollow>();
@@ -266,7 +267,7 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = velocity;
     }
     private void Animate() { 
-        if(face != Mathf.Sign(velocity.x) && velocity.x !=0)
+        if(face != Mathf.Sign(velocity.x) && velocity.x !=0 && canGrabLedge)
         {
             face *= -1;
             Vector3 scale = transform.localScale;
@@ -342,7 +343,7 @@ public class PlayerController : MonoBehaviour
     }
     private void WallSlide()
     {
-        bool pushingWall = (velocity.x == 0 && onRightWall) || (velocity.x == 0 && onLeftWall);
+        bool pushingWall = (velocity.x== 0 && onRightWall) || (velocity.x == 0 && onLeftWall);
 
         float push = pushingWall ? 0 : velocity.x;
         velocity.y = Mathf.Max(velocity.y, -slideSpeed);
@@ -352,15 +353,20 @@ public class PlayerController : MonoBehaviour
     #region ledge grab
     private void CheckForLedge()
     {
+
+        int dir = rightLedgeDetected ? 1 : -1;
+
+        Vector2 detector = rightLedgeDetected ? rightLedgeDetector : leftLedgeDetector;
+
         //check if we're not trying to climb on ceeling
         bool notUnderGround = !Physics2D.OverlapCircle((Vector2)transform.position + ceelingOffset, collisionRadius, groundLayer);
-        if (leftLedgeDetected && canGrabLedge)
+        if ((leftLedgeDetected || rightLedgeDetected) && canGrabLedge)
         {
             
             canGrabLedge = false;
-
-            climbBeginPos = (Vector2)this.transform.position + leftLedgeDetector - ledgeOffset1;
-            climbOverPos = (Vector2)this.transform.position+ leftLedgeDetector + new Vector2(-ledgeOffset2.x, ledgeOffset2.y);
+            
+            climbBeginPos = (Vector2)transform.position + detector + new Vector2(ledgeOffset1.x * dir, ledgeOffset1.y);
+            climbOverPos = (Vector2)transform.position + detector + new Vector2(ledgeOffset2.x * dir, ledgeOffset2.y);
 
 
             if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) && notUnderGround)
@@ -371,28 +377,15 @@ public class PlayerController : MonoBehaviour
             canClimb = true; 
 
         }
-        else if(rightLedgeDetected && canGrabLedge)
+
+        if (!Physics2D.OverlapCircle(climbBeginPos, collisionRadius, groundLayer)&& canClimb)
         {
-            canGrabLedge = false;
-
-            
-            climbBeginPos = (Vector2)this.transform.position +rightLedgeDetector + ledgeOffset1;
-            climbOverPos = (Vector2)this.transform.position + rightLedgeDetector + ledgeOffset2;
-            Debug.DrawLine(transform.position, climbOverPos, Color.red);
-            Debug.DrawLine(transform.position, climbBeginPos, Color.green);
-
-            if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) && notUnderGround)
-            {
-                canGrabLedge = true;
-                return;
-            }
-            canClimb = true;
+            transform.position = climbBeginPos;
+            // mo¿esz tu dodaæ animacjê climb
         }
-
-        if (canClimb)
+        else
         {
-            transform.position = climbBeginPos;//climb
-            
+            canClimb = false; // anuluj climb jeœli miejsce zajête
         }
     }
     private void LedgeClimbOver()
@@ -430,19 +423,15 @@ public class PlayerController : MonoBehaviour
     }
     void ExectueAttack()
     {
-        Collider2D hit = Physics2D.OverlapCircle((Vector2)transform.position + attackPoint, attackRadius, enemyLayer);
-
+        Collider2D[] hits = Physics2D.OverlapCircleAll((Vector2)transform.position + attackPoint, attackRadius, enemyLayer);
         //fight with enemies
-        if (hit!= null)
+        foreach (var hit in hits)
         {
-            Debug.Log("Atak");
-            //get enemy we hited
             EnemyController enemy = hit.GetComponent<EnemyController>();
-            //take damage
-            if(enemy != null) 
+            if (enemy != null)
                 enemy.TakeDamage(1);
-
         }
+
         //destroy objects
         Vector2 center = (Vector2)transform.position + attackPoint;
         //iloœæ sprawdzanych punktów

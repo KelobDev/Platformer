@@ -22,12 +22,16 @@ public class CameraManager : MonoBehaviour
     {
         if (instance == null) 
             instance = this;
-        Debug.Log("CameraManager Awake: " + gameObject.name);
+        
         framingTransposer = cam.GetCinemachineComponent<CinemachineFramingTransposer>();
+        normYPanAmount = framingTransposer.m_YDamping;
     }
 
     public void LerpYDamping(bool isPlayerFalling)
     {
+        if (lerpYPanCoroutine != null)
+            StopCoroutine(lerpYPanCoroutine);
+
         lerpYPanCoroutine = StartCoroutine(LerpYAction(isPlayerFalling));
     }
     private IEnumerator LerpYAction(bool isPlayerFalling)
