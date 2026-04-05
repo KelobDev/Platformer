@@ -73,6 +73,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Tilemap destructables;//for destroying elemmts by punching
     private bool groundPound;
     private InputAction attack;
+    //shooting
+    private float holdTime;
+    private bool isCharging = false;
+    [SerializeField] private float minHoldDuration = 0.5f;
+    [SerializeField, Range(0f,100f)] private float headJumpForce = 10f;
+    [SerializeField] private GameObject bulletPrefab;
+
+
 
     [Header("Animations")]
     [SerializeField] private Animator anim;
@@ -91,6 +99,8 @@ public class PlayerController : MonoBehaviour
     {
         attack = playerControls.Player.Attack;
         attack.performed += Attack;
+        attack.started += StartCharging;
+        attack.canceled += RelaseAttack;
         move = playerControls.Player.Move;
         jump = playerControls.Player.Jump;
         run = playerControls.Player.Sprint;
@@ -103,6 +113,9 @@ public class PlayerController : MonoBehaviour
     }
     private void OnDisable()
     {
+        attack.performed -= Attack;
+        attack.started -= StartCharging;
+        attack.canceled -= RelaseAttack;
         attack.Disable();
         crouch.Disable();
         run.Disable();
@@ -190,6 +203,7 @@ public class PlayerController : MonoBehaviour
         if(!groundPound)
             Move();
         GroundPound();
+        HeadJump();
         #region jumping
         if (jump.ReadValue<float>() == 0)
             jumped = false;
@@ -378,14 +392,10 @@ public class PlayerController : MonoBehaviour
 
         }
 
-        if (!Physics2D.OverlapCircle(climbBeginPos, collisionRadius, groundLayer)&& canClimb)
+        if (canClimb)
         {
             transform.position = climbBeginPos;
-            // mo¿esz tu dodaæ animacjê climb
-        }
-        else
-        {
-            canClimb = false; // anuluj climb jeœli miejsce zajête
+            
         }
     }
     private void LedgeClimbOver()
@@ -406,6 +416,24 @@ public class PlayerController : MonoBehaviour
     #endregion
     //attacking
     #region Attack
+    private void HeadJump()
+    {
+        if(Physics2D.OverlapCircle((Vector2)transform.position + bottomOffset, collisionRadius, enemyLayer))
+        {
+            //kill enemy we jumped on
+            Collider2D[] hits = Physics2D.OverlapCircleAll((Vector2)transform.position + bottomOffset, attackRadius, enemyLayer);
+            //fight with enemies
+            foreach (var hit in hits)
+            {
+                EnemyController enemy = hit.GetComponent<EnemyController>();
+                if (enemy != null)
+                {
+                    enemy.TakeDamage(1);
+                    velocity.y = headJumpForce;
+                }
+            }
+        }
+    }
     private void Attack(InputAction.CallbackContext ctx)
     {
 
@@ -451,6 +479,33 @@ public class PlayerController : MonoBehaviour
                 destructables.SetTile(cellPos, null);
                 Debug.Log("Puk puk puk puk");
             }
+        }
+    }
+    private void StartCharging(InputAction.CallbackContext ctx)
+    {
+        isCharging = true;
+        holdTime = (float)ctx.startTime;//save start time of holding
+        Debug.Log("Charging animation here");
+    }
+    private void RelaseAttack(InputAction.CallbackContext ctx) { 
+    
+        float duration = (float)(ctx.time - holdTime);
+        if (isCharging)
+        {
+            if(duration >= minHoldDuration)
+            {
+                Debug.Log("Pal");
+                //spawn bullet
+                bulletPrefab.GetComponent<BulletController>().Setup(face);
+                bulletPrefab.transform.position = new Vector3(transform.position.x + attackPoint.x, transform.position.y + attackPoint.y,0);
+                Instantiate(bulletPrefab);
+            }
+            else
+            {
+                Debug.Log("zbyt krotko");
+            }
+            isCharging=false;
+            //turn off charigng animation
         }
     }
     private void SetAttackPoint()

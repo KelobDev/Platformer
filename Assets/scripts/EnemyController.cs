@@ -92,6 +92,7 @@ public class EnemyController : MonoBehaviour
     }
     private void Die()
     {
+        LevelManager.instance.Addpoints(2);
         Destroy(this.gameObject);
     }
 
