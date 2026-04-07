@@ -91,6 +91,10 @@ public class PlayerController : MonoBehaviour
     private CameraFollow camFollow;
     private float fallSpeedYDampingChangeThreshold;
 
+    [Header("Respawn")]
+    [SerializeField] private int health;
+    [SerializeField] private GameObject checkPoint;
+
     private Rigidbody2D rb;
     private PlayerInputAction playerControls;
 
@@ -414,6 +418,26 @@ public class PlayerController : MonoBehaviour
         if (collision.gameObject.layer == LayerMask.NameToLayer("Ground")) canDetect = true;
     }
     #endregion
+    //Health system
+    #region healthSystem
+    private void Die()
+    {
+        transform.position = checkPoint.transform.position;
+        health = 1;
+    }
+    public void TakeDamage(int amount)
+    {
+        health -= amount;
+        if (health <= 0)
+            Die();
+    }
+    public void SetCheckpoint(GameObject ncp)
+    {
+        checkPoint.GetComponent<Checkpoint>().taken = false;
+        checkPoint = ncp;
+        checkPoint.GetComponent<Checkpoint>().taken = true;
+    }
+    #endregion
     //attacking
     #region Attack
     private void HeadJump()
@@ -494,7 +518,7 @@ public class PlayerController : MonoBehaviour
         {
             if(duration >= minHoldDuration)
             {
-                Debug.Log("Pal");
+                
                 //spawn bullet
                 bulletPrefab.GetComponent<BulletController>().Setup(face);
                 bulletPrefab.transform.position = new Vector3(transform.position.x + attackPoint.x, transform.position.y + attackPoint.y,0);
@@ -549,5 +573,13 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius);
         Gizmos.DrawWireSphere((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius);
         Gizmos.DrawWireSphere(climbOverPos, collisionRadius);//debugging for climbing ledges
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Damage"))
+        {
+            TakeDamage(1);
+        }
     }
 }
