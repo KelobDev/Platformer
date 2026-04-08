@@ -24,6 +24,7 @@ public class PlayerController : MonoBehaviour
     private Vector2 velocity;
     private float maxSpeedChange;
     private float acceleration;
+    private bool canMove = true;
     
     [Header("Crouching")]
     [SerializeField] private Collider2D CrouchCollider;
@@ -130,6 +131,7 @@ public class PlayerController : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Awake()
     {
+        canMove = true;
         playerControls = new PlayerInputAction();
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
@@ -157,132 +159,137 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        #region collision system
-        //checks if player is touching ground
-        onGround = Physics2D.OverlapCircle((Vector2)transform.position + bottomOffset, collisionRadius, groundLayer);
-        //checks if player is touching wall
-        onWall = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, groundLayer)
-            || Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, groundLayer);
-        onRightWall = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, groundLayer);
-        onLeftWall = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, groundLayer);
-        //ledge detection
-        if (canDetect && !crouching)
+        if (canMove)
         {
-            leftLedgeDetected = Physics2D.OverlapCircle((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius, groundLayer);
-            rightLedgeDetected =  Physics2D.OverlapCircle((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius, groundLayer);
+            #region collision system
+            //checks if player is touching ground
+            onGround = Physics2D.OverlapCircle((Vector2)transform.position + bottomOffset, collisionRadius, groundLayer);
+            //checks if player is touching wall
+            onWall = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, groundLayer)
+                || Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, groundLayer);
+            onRightWall = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, groundLayer);
+            onLeftWall = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, groundLayer);
+            //ledge detection
+            if (canDetect && !crouching)
+            {
+                leftLedgeDetected = Physics2D.OverlapCircle((Vector2)transform.position + leftLedgeDetector, ledgeCollisionRadius, groundLayer);
+                rightLedgeDetected = Physics2D.OverlapCircle((Vector2)transform.position + rightLedgeDetector, ledgeCollisionRadius, groundLayer);
 
-        }
-        #endregion
+            }
+            #endregion
 
-        #region input system
-        desiredJump = jump.IsPressed();
-        wantsToCrouch = crouch.IsPressed();
-        direction = move.ReadValue<Vector2>();
-        desiredVelocity = new Vector2(direction.x, 0f) * maxSpeed;
-        SetAttackPoint();
-        if (run.IsPressed() && !crouching)
-        {
-            desiredVelocity *= runMultiplier;
+            #region input system
+            desiredJump = jump.IsPressed();
+            wantsToCrouch = crouch.IsPressed();
+            direction = move.ReadValue<Vector2>();
+            desiredVelocity = new Vector2(direction.x, 0f) * maxSpeed;
+            SetAttackPoint();
+            if (run.IsPressed() && !crouching)
+            {
+                desiredVelocity *= runMultiplier;
 
+            }
+            #endregion
+            CheckForLedge();
+            #region camera system
+            //update camera
+            if (rb.linearVelocity.y < fallSpeedYDampingChangeThreshold && !CameraManager.instance.IsLerpingYDamping && !CameraManager.instance.LerpedFromPlayerFalling)
+            {
+                CameraManager.instance.LerpYDamping(true);
+            }
+            if (rb.linearVelocity.y >= 0f && !CameraManager.instance.IsLerpingYDamping && CameraManager.instance.LerpedFromPlayerFalling)
+            {
+                CameraManager.instance.LerpedFromPlayerFalling = false;
+                CameraManager.instance.LerpYDamping(false);
+            }
+            #endregion
         }
-        #endregion
-        CheckForLedge();
-        #region camera system
-        //update camera
-        if (rb.linearVelocity.y < fallSpeedYDampingChangeThreshold && !CameraManager.instance.IsLerpingYDamping && !CameraManager.instance.LerpedFromPlayerFalling)
-        {
-            CameraManager.instance.LerpYDamping(true);
-        }
-        if(rb.linearVelocity.y >=0f && !CameraManager.instance.IsLerpingYDamping && CameraManager.instance.LerpedFromPlayerFalling)
-        {
-            CameraManager.instance.LerpedFromPlayerFalling = false;
-            CameraManager.instance.LerpYDamping(false);
-        }
-        #endregion
     }
     private void FixedUpdate()
     {
-
-        velocity = rb.linearVelocity;//get players velocity to work on it
-        if(!groundPound)
-            Move();
-        GroundPound();
-        HeadJump();
-        #region jumping
-        if (jump.ReadValue<float>() == 0)
-            jumped = false;
-        if (!jumped && velocity.y > 0)
+        if (canMove)
         {
-            velocity.y -= downwardMovementMultiplier* 2 * Time.deltaTime;
-            velocity.y = Mathf.Max(velocity.y, 0f);
-        }
-        if (onGround)
-        {
-            groundPound = false;//can't ground pound anymore
-            jumpPhase = 0;
-            coyoteTimeTimer = coyoteTime;//reset coyoteTimer
-
-            velocity.x = desiredVelocity.x;
-
-            //if we just landed and wanted to jump
-            if (jumpBufferTimer > 0)
+            velocity = rb.linearVelocity;//get players velocity to work on it
+            if (!groundPound)
+                Move();
+            GroundPound();
+            HeadJump();
+            #region jumping
+            if (jump.ReadValue<float>() == 0)
+                jumped = false;
+            if (!jumped && velocity.y > 0)
             {
-                jumpBufferTimer = 0f;
-                Jump();
+                velocity.y -= downwardMovementMultiplier * 2 * Time.deltaTime;
+                velocity.y = Mathf.Max(velocity.y, 0f);
             }
-        }
-        else
-        {
-            coyoteTimeTimer -= Time.deltaTime;
-        }
-        if(onWall && !onGround)
-        {
-            if(direction.x != 0)
+            if (onGround)
             {
-                WallSlide();
-            }
-        }
-        if (desiredJump)
-        {
-            if (canClimb)
-            {
-                //system for now that I don't have an animation
-                LedgeClimbOver();
-                return;
-            }
-            desiredJump = false;
-            
-            if (onWall && !onGround)
-            {
-                WallJump();
+                groundPound = false;//can't ground pound anymore
+                jumpPhase = 0;
+                coyoteTimeTimer = coyoteTime;//reset coyoteTimer
+
+                velocity.x = desiredVelocity.x;
+
+                //if we just landed and wanted to jump
+                if (jumpBufferTimer > 0)
+                {
+                    jumpBufferTimer = 0f;
+                    Jump();
+                }
             }
             else
             {
-                Jump();
+                coyoteTimeTimer -= Time.deltaTime;
             }
-            jumped = true;
-            //jump buffer logic
-            jumpBufferTimer = jumpBufferTime;
+            if (onWall && !onGround)
+            {
+                if (direction.x != 0)
+                {
+                    WallSlide();
+                }
+            }
+            if (desiredJump)
+            {
+                if (canClimb)
+                {
+                    //system for now that I don't have an animation
+                    LedgeClimbOver();
+                    return;
+                }
+                desiredJump = false;
+
+                if (onWall && !onGround)
+                {
+                    WallJump();
+                }
+                else
+                {
+                    Jump();
+                }
+                jumped = true;
+                //jump buffer logic
+                jumpBufferTimer = jumpBufferTime;
+            }
+            else
+            {
+                jumpBufferTimer -= Time.deltaTime;
+            }
+            if (rb.linearVelocity.y > 0)
+            {
+                rb.gravityScale = upwardMovementMultiplier;
+            }
+            else if (rb.linearVelocity.y < 0)
+            {
+                rb.gravityScale = downwardMovementMultiplier;
+            }
+            else if (rb.linearVelocity.y == 0)
+            {
+                rb.gravityScale = defaultGravityScale;
+            }
+            #endregion
+            Animate();
+            rb.linearVelocity = velocity;
         }
-        else
-        {
-            jumpBufferTimer -= Time.deltaTime;
-        }
-        if(rb.linearVelocity.y > 0)
-        {
-            rb.gravityScale = upwardMovementMultiplier;
-        }
-        else if (rb.linearVelocity.y < 0)
-        {
-            rb.gravityScale = downwardMovementMultiplier;
-        }
-        else if(rb.linearVelocity.y == 0)
-        {
-            rb.gravityScale = defaultGravityScale;
-        }
-        #endregion
-        Animate();
-        rb.linearVelocity = velocity;
     }
     private void Animate() { 
         if(face != Mathf.Sign(velocity.x) && velocity.x !=0 && canGrabLedge)
@@ -558,6 +565,13 @@ public class PlayerController : MonoBehaviour
     }
     #endregion
 
+    //finish Level
+    private void FinishLevel()
+    {
+        canMove = false;
+        LevelManager.instance.FinishLevel();
+    }
+
     //display gorund detect points
     private void OnDrawGizmos()
     {
@@ -580,6 +594,10 @@ public class PlayerController : MonoBehaviour
         if (collision.gameObject.CompareTag("Damage"))
         {
             TakeDamage(1);
+        }
+        if (collision.gameObject.CompareTag("Finish"))
+        {
+            FinishLevel();
         }
     }
 }
