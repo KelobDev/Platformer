@@ -204,7 +204,7 @@ MonoBehaviour:
   rightLedgeDetector: {x: 0.5, y: 1}
   leftLedgeDetector: {x: -0.5, y: 1}
   ledgeCollisionRadius: 0.164
-  ledgeOffset1: {x: -0.5, y: 0}
+  ledgeOffset1: {x: -0.5, y: -1}
   ledgeOffset2: {x: 1, y: 1}
   attackPoint: {x: 1, y: 0}
   attackRadius: 0.7

@@ -51,6 +51,8 @@ public class EnemyController : MonoBehaviour
         Bullet.GetComponent<BulletController>().Setup((int)shootPoint.x);
         if (type == Type.NEUTRAL)
             direction.x = 1;
+        if(LevelManager.instance!=null)
+            LevelManager.instance.maxPoints += 2;
     }
 
     // Update is called once per frame

@@ -111,7 +111,11 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   health: 1
-  speed: 4
+  speed: 10
+  shootPoint: {x: 0, y: 0}
+  shootingTime: 1
+  shootingTimer: 0
+  Bullet: {fileID: 2852817617246714629, guid: e7b6b5fb899972248a6d4e1b13486cef, type: 3}
   leftDetector: {x: -0.5, y: 0}
   rightDetector: {x: 0.5, y: 0}
   groundDetector: {x: 0, y: -0.5}

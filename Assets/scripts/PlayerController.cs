@@ -96,6 +96,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private int health;
     [SerializeField] private GameObject checkPoint;
 
+
     private Rigidbody2D rb;
     private PlayerInputAction playerControls;
 
@@ -203,6 +204,7 @@ public class PlayerController : MonoBehaviour
                 CameraManager.instance.LerpYDamping(false);
             }
             #endregion
+
         }
     }
     private void FixedUpdate()
@@ -387,23 +389,24 @@ public class PlayerController : MonoBehaviour
         bool notUnderGround = !Physics2D.OverlapCircle((Vector2)transform.position + ceelingOffset, collisionRadius, groundLayer);
         if ((leftLedgeDetected || rightLedgeDetected) && canGrabLedge)
         {
-            
-            canGrabLedge = false;
-            
-            climbBeginPos = (Vector2)transform.position + detector + new Vector2(ledgeOffset1.x * dir, ledgeOffset1.y);
-            climbOverPos = (Vector2)transform.position + detector + new Vector2(ledgeOffset2.x * dir, ledgeOffset2.y);
 
 
-            if (!Physics2D.OverlapCircle(climbOverPos, collisionRadius, groundLayer) && notUnderGround)
+            Vector2 tempBeginPos = (Vector2)transform.position + detector + new Vector2(ledgeOffset1.x * dir, ledgeOffset1.y);
+            Vector2 tempOverPos = (Vector2)transform.position + detector + new Vector2(ledgeOffset2.x * dir, ledgeOffset2.y);
+
+            bool canFitAtEnd = !Physics2D.OverlapCircle(tempOverPos, collisionRadius, groundLayer);
+            if (canFitAtEnd && notUnderGround)
             {
-                canGrabLedge = true;
-                return;
-            }
-            canClimb = true; 
+                climbBeginPos = tempBeginPos;
+                climbOverPos = tempOverPos;
 
+                canGrabLedge = false;
+                canClimb = true;
+            }
+            
         }
 
-        if (canClimb)
+        if (canClimb&&notUnderGround&&!onGround)
         {
             transform.position = climbBeginPos;
             
@@ -598,6 +601,13 @@ public class PlayerController : MonoBehaviour
         if (collision.gameObject.CompareTag("Finish"))
         {
             FinishLevel();
+        }
+    }
+    private void OnTriggerStay2D(Collider2D collision)
+    {
+        if(collision.CompareTag("Door") && direction.y > 0.1)
+        {
+            collision.gameObject.GetComponent<LevelDoor>().Loadscene();
         }
     }
 }
