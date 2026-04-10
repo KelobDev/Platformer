@@ -28,6 +28,7 @@ public class EnemyController : MonoBehaviour
 
     [Header("Movement system")]
     [SerializeField, Range(0f, 100f)] private float speed = 4f;
+    private bool OnWall, OnCeeling,OnGround;
     private Vector2 velocity, direction;
 
     [Header("Attacking System")]
@@ -38,7 +39,7 @@ public class EnemyController : MonoBehaviour
 
 
     [Header("Detectors")]
-    [SerializeField] private Vector2 leftDetector, rightDetector, groundDetector;
+    [SerializeField] private Vector2 leftDetector, rightDetector, groundDetector, topDetector;
     [SerializeField, Range(0f, 1f)] private float detectorRadius;
 
 
@@ -51,6 +52,8 @@ public class EnemyController : MonoBehaviour
         Bullet.GetComponent<BulletController>().Setup((int)shootPoint.x);
         if (type == Type.NEUTRAL)
             direction.x = 1;
+        if(type == Type.WALLCRAWL)
+            direction.y = 1;
         if(LevelManager.instance!=null)
             LevelManager.instance.maxPoints += 2;
     }
@@ -65,9 +68,18 @@ public class EnemyController : MonoBehaviour
             if (Physics2D.OverlapCircle((Vector2)transform.position + leftDetector, detectorRadius, groundLayer))
                 direction.x = 1;
         }
-        if(type == Type.RANGED)
+        if(type == Type.WALLCRAWL)
         {
-
+            if (Physics2D.OverlapCircle((Vector2)transform.position + rightDetector, detectorRadius, groundLayer) ||
+                Physics2D.OverlapCircle((Vector2)transform.position + leftDetector, detectorRadius, groundLayer))
+                OnWall = true;
+            else OnWall = false;
+            if(Physics2D.OverlapCircle((Vector2)transform.position + groundDetector, detectorRadius, groundLayer))
+                OnGround = true;
+            else OnGround = false;
+            if (Physics2D.OverlapCircle((Vector2)transform.position + topDetector, detectorRadius, groundLayer))
+                OnCeeling = true;
+            else OnCeeling = false;
         }
     }
     private void FixedUpdate()
@@ -76,12 +88,25 @@ public class EnemyController : MonoBehaviour
             Move();
         if (type == Type.RANGED)
             Shoot();
+        if(type == Type.WALLCRAWL)
+            WallCrawl();
     }
+    //movements
     private void Move()
     {
-        velocity = rb.linearVelocity;
+        velocity = transform.position;
         velocity.x += direction.x * speed * Time.deltaTime;
-        rb.linearVelocity = velocity;
+        transform.position = velocity;
+    }
+    private void WallCrawl()
+    {
+        if (!OnWall || OnCeeling || OnGround)
+            direction.y *= -1;
+        velocity = transform.position;
+        velocity.y += direction.y * speed * Time.deltaTime;
+        transform.position = velocity;
+        
+
     }
     //take damage
     public void TakeDamage(int amount)

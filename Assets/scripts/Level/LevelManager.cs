@@ -84,6 +84,8 @@ public class LevelManager : MonoBehaviour
         {
             if (earnedNow[i]) data.starsEarned[i] = true;
         }
+        if(data.bestCoins > playerPoints) 
+            data.bestCoins = playerPoints;
 
         string newJson = JsonUtility.ToJson(data);
         File.WriteAllText(path, newJson);
