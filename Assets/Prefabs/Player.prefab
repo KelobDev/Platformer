@@ -181,6 +181,9 @@ MonoBehaviour:
   enemyLayer:
     serializedVersion: 2
     m_Bits: 128
+  switchLayer:
+    serializedVersion: 2
+    m_Bits: 512
   maxSpeed: 6
   runMultiplier: 2
   maxAcceleration: 40

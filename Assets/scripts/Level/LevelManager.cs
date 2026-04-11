@@ -1,7 +1,7 @@
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.IO;
+using TMPro;
 
 public class LevelManager : MonoBehaviour
 {
@@ -24,6 +24,7 @@ public class LevelManager : MonoBehaviour
     [Header("UI")]
     [SerializeField] private GameObject finishPanel;
     [SerializeField] private GameObject[] stars;
+    [SerializeField] private TMP_Text PointsText;
     private void Update()
     {
        timer += Time.deltaTime;
@@ -62,7 +63,7 @@ public class LevelManager : MonoBehaviour
             if(secretsFound>=1)currentStars[3] = true;  
             if(secretsFound >= 2)currentStars[4] = true;
         }
-
+        PointsText.text ="Points: "+playerPoints.ToString();
         //display stars
         for (int i = 0; i < 5; i++)
         {
@@ -73,6 +74,8 @@ public class LevelManager : MonoBehaviour
     private void SaveProgress(bool[] earnedNow) {
 
         string path = Application.persistentDataPath + "/level_" + levelID + ".json";
+        string pathH = Application.persistentDataPath + "/Hub.json";
+
         LevelData data = new LevelData();
         if (File.Exists(path))
         {
@@ -84,12 +87,29 @@ public class LevelManager : MonoBehaviour
         {
             if (earnedNow[i]) data.starsEarned[i] = true;
         }
-        if(data.bestCoins > playerPoints) 
+
+        
+        if (playerPoints > data.bestCoins)
+        {
+
+            HubData dataH = new HubData();
+            if (File.Exists(pathH))
+            {
+                string jsonH = File.ReadAllText(pathH);
+                dataH = JsonUtility.FromJson<HubData>(jsonH);
+            }
+
+            
+            dataH.Points += playerPoints-data.bestCoins;    
             data.bestCoins = playerPoints;
+
+            string hubJson = JsonUtility.ToJson(dataH);
+            File.WriteAllText(pathH, hubJson);
+
+        }
 
         string newJson = JsonUtility.ToJson(data);
         File.WriteAllText(path, newJson);
-        Debug.Log("Zapisano progres w: " + path);
 
     }
     public void GoToHub()

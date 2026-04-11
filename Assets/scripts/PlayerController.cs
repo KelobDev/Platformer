@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
     [Header("Layers")]
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private LayerMask enemyLayer;
+    [SerializeField] private LayerMask switchLayer;
 
     [Header("Movement")]
     [SerializeField, Range(0f, 100f)] private float maxSpeed = 4f;
@@ -467,10 +468,11 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
+        
     }
     private void Attack(InputAction.CallbackContext ctx)
     {
-
+        
         if (onGround)
         {
             ExectueAttack();
@@ -492,6 +494,15 @@ public class PlayerController : MonoBehaviour
             EnemyController enemy = hit.GetComponent<EnemyController>();
             if (enemy != null)
                 enemy.TakeDamage(1);
+        }
+        Collider2D[] switches = Physics2D.OverlapCircleAll((Vector2)transform.position + attackPoint, attackRadius, switchLayer);
+
+        foreach (var swi in switches)
+        {
+            if (swi.TryGetComponent<Switch>(out Switch sw))
+            {
+                sw.changeState();
+            }
         }
 
         //destroy objects
