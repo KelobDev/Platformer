@@ -4034,16 +4034,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4836d6cde08af89478be1fc0b079ce07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelManager
+  levelID: 0
+  isTimeTrial: 0
   maxPoints: 10
   playerPoints: 0
+  secretsFound: 0
   timer: 0
-  timeForStar: 12
-  hasTimeStar: 1
+  goldTime: 0
+  silverTime: 0
+  bonzeTime: 0
   finishPanel: {fileID: 1031837190}
   stars:
   - {fileID: 1093520356}
   - {fileID: 2089889784}
   - {fileID: 11482896}
+  PointsText: {fileID: 888946709}
 --- !u!1 &1093520356
 GameObject:
   m_ObjectHideFlags: 0
