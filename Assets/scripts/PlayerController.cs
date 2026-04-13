@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Xml.Serialization;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Tilemaps;
@@ -15,16 +16,18 @@ public class PlayerController : MonoBehaviour
     [Header("Movement")]
     [SerializeField, Range(0f, 100f)] private float maxSpeed = 4f;
     [SerializeField, Range(0f, 100f)] private float runMultiplier = 4f;
-    [SerializeField, Range(0f, 100f)] private float maxAcceleration = 35f;
-    [SerializeField, Range(0f, 100f)] private float maxAirAcceleration = 20f;
+    [SerializeField, Range(0f, 100f)] private float acceleration = 35f;
+    [SerializeField, Range(0f, 100f)] private float deceleration = 60f;
+    [SerializeField, Range(0f, 100f)] private float airAcceleration = 20f;
+    [SerializeField, Range(0f, 100f)] private float airDeceleration = 10f;
     [SerializeField, Range(0f, 100f)] private float maxCrouchAcceleration = 20f;
+    [SerializeField, Range(0f, 100f)] private float turnMultiplier = 2.5f;
     private InputAction run;
     private  InputAction move;
     private Vector2 direction;
     private Vector2 desiredVelocity;
     private Vector2 velocity;
     private float maxSpeedChange;
-    private float acceleration;
     private bool canMove = true;
     
     [Header("Crouching")]
@@ -44,8 +47,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0, 5)] private int maxAirJumps = 0;
     [SerializeField, Range(0f, 5f)] private float downwardMovementMultiplier = 3f;
     [SerializeField, Range(0f, 5f)] private float upwardMovementMultiplier = 1.7f;
+    [SerializeField, Range(0f, 1f)] private float jumpCutMultiplier = 0.5f;
     [SerializeField, Range(0f, 1f)] private float coyoteTime = 0.2f;
     [SerializeField, Range(0f, 1f)] private float jumpBufferTime = 0.2f;
+    [SerializeField] private float apexHangTimeThreshold = 0.5f;
+    [SerializeField] private float apexGravityMultiplier = 0.5f;
     private float coyoteTimeTimer;
     private float jumpBufferTimer;
     private bool jumped;
@@ -80,9 +86,13 @@ public class PlayerController : MonoBehaviour
     private bool isCharging = false;
     [SerializeField] private float minHoldDuration = 0.5f;
     [SerializeField, Range(0f,100f)] private float headJumpForce = 10f;
+    [SerializeField, Range(0f, 100f)] private float headJumpBoost = 1.2f;
     [SerializeField] private GameObject bulletPrefab;
 
-
+    [Header("Visual polish")]
+    [SerializeField] private float stretchAmount = 1.2f;
+    [SerializeField] private float squashAmount = 0.8f;
+    [SerializeField] private float elasticity = 10f;
 
     [Header("Animations")]
     [SerializeField] private Animator anim;
@@ -161,6 +171,7 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        ApplySquashAndStretch();
         if (canMove)
         {
             #region collision system
@@ -205,7 +216,7 @@ public class PlayerController : MonoBehaviour
                 CameraManager.instance.LerpYDamping(false);
             }
             #endregion
-
+            
         }
     }
     private void FixedUpdate()
@@ -215,23 +226,22 @@ public class PlayerController : MonoBehaviour
             velocity = rb.linearVelocity;//get players velocity to work on it
             if (!groundPound)
                 Move();
+            CornerCorrection();
             GroundPound();
-            HeadJump();
             #region jumping
-            if (jump.ReadValue<float>() == 0)
-                jumped = false;
-            if (!jumped && velocity.y > 0)
+            if (jump.ReadValue<float>() == 0 && velocity.y > 0.01 && jumped)
             {
-                velocity.y -= downwardMovementMultiplier * 2 * Time.deltaTime;
-                velocity.y = Mathf.Max(velocity.y, 0f);
+                velocity.y *= jumpCutMultiplier;
+                jumped = false;
             }
             if (onGround)
             {
                 groundPound = false;//can't ground pound anymore
+                if(jumpPhase !=0)
+                    SetAppearance(new Vector2(stretchAmount*face, squashAmount));
                 jumpPhase = 0;
                 coyoteTimeTimer = coyoteTime;//reset coyoteTimer
 
-                velocity.x = desiredVelocity.x;
 
                 //if we just landed and wanted to jump
                 if (jumpBufferTimer > 0)
@@ -249,6 +259,25 @@ public class PlayerController : MonoBehaviour
                 if (direction.x != 0)
                 {
                     WallSlide();
+                }
+            }
+            if (onGround)
+            {
+                rb.gravityScale = defaultGravityScale;
+            }
+            else
+            {
+                if (Mathf.Abs(velocity.y) < apexHangTimeThreshold)
+                {
+                    rb.gravityScale = defaultGravityScale * apexGravityMultiplier;
+                }
+                else if (velocity.y > 0)
+                {
+                    rb.gravityScale = upwardMovementMultiplier;
+                }
+                else if (velocity.y < 0)
+                {
+                    rb.gravityScale = downwardMovementMultiplier;
                 }
             }
             if (desiredJump)
@@ -277,22 +306,25 @@ public class PlayerController : MonoBehaviour
             {
                 jumpBufferTimer -= Time.deltaTime;
             }
-            if (rb.linearVelocity.y > 0)
-            {
-                rb.gravityScale = upwardMovementMultiplier;
-            }
-            else if (rb.linearVelocity.y < 0)
-            {
-                rb.gravityScale = downwardMovementMultiplier;
-            }
-            else if (rb.linearVelocity.y == 0)
-            {
-                rb.gravityScale = defaultGravityScale;
-            }
             #endregion
             Animate();
             rb.linearVelocity = velocity;
         }
+    }
+
+    private void ApplySquashAndStretch()
+    {
+        //powrót do normalnej skali
+        Transform visualTransform = this.transform;
+        visualTransform.localScale = Vector3.Lerp(
+            this.transform.localScale,
+            new Vector3(face, 1, 1),
+            Time.deltaTime * elasticity);
+    }
+    public void SetAppearance(Vector2 targetScale)
+    {
+        Transform visualTransform = this.transform;
+        visualTransform.localScale = new Vector3(targetScale.x, targetScale.y, 1);
     }
     private void Animate() { 
         if(face != Mathf.Sign(velocity.x) && velocity.x !=0 && canGrabLedge)
@@ -323,25 +355,45 @@ public class PlayerController : MonoBehaviour
                 crouching = false;
             }
         }
-        acceleration = onGround ?  crouching ?  maxCrouchAcceleration : maxAcceleration : maxAirAcceleration;
-        if (crouching)
-        {
-
-            CrouchCollider.enabled = false;
-        }
-        else
-        {
-            CrouchCollider.enabled = true;
-        }
-        maxSpeedChange = acceleration * Time.deltaTime;
-        velocity.x = Mathf.MoveTowards(velocity.x, desiredVelocity.x, maxSpeedChange);
+        CrouchCollider.enabled = !crouching;
+        float currentAcceleration = onGround ? acceleration : airAcceleration;
+        float currentDeceleration = onGround ? deceleration : airDeceleration;
+        bool isTryingToMove = Mathf.Abs(direction.x) > 0.01f;
+        //sprawdzamy czy zmieniamy kierunek ruchu
+        bool isTurning = isTryingToMove && Mathf.Sign(direction.x) != Mathf.Sign(velocity.x) && Mathf.Abs(velocity.x) > 0.1f;
+        
+        float runForce = (isTryingToMove ? currentAcceleration: currentDeceleration) * (isTurning ? turnMultiplier : 1);
+        maxSpeedChange = runForce * Time.deltaTime;
+        float targetSpeed = desiredVelocity.x;
+        if (crouching && onGround) targetSpeed = direction.x * maxCrouchAcceleration;
+        velocity.x = Mathf.MoveTowards(velocity.x,targetSpeed, maxSpeedChange);
+        
     }
     //jump function
+
+    private void CornerCorrection()
+    {
+        //promienie sprawdzaj¹ce sufit
+        float rayLength = 0.5f;
+        Vector2 rayOrigin = (Vector2)transform.position+ceelingOffset;
+        RaycastHit2D hitLeft = Physics2D.Raycast(rayOrigin + Vector2.left, Vector2.up, rayLength, groundLayer);
+        RaycastHit2D hitRight = Physics2D.Raycast(rayOrigin + Vector2.right, Vector2.up, rayLength, groundLayer);
+
+        if (hitLeft.collider != null && hitRight.collider == null) {
+            rb.linearVelocity = new Vector2(maxSpeed, rb.linearVelocity.y);
+        }
+        if (hitLeft.collider == null && hitRight.collider != null)
+        {
+            rb.linearVelocity = new Vector2(-maxSpeed, rb.linearVelocity.y);
+        }
+
+    }
     private void Jump()
     {
         if(onGround || jumpPhase < maxAirJumps||coyoteTimeTimer >0)
         {
             jumpPhase += 1;
+            SetAppearance(new Vector2(squashAmount * face, stretchAmount));
             float jumpSpeed = Mathf.Sqrt(-2f * Physics2D.gravity.y*jumpHeight);
             if(velocity.y > 0f)
             {
@@ -419,6 +471,7 @@ public class PlayerController : MonoBehaviour
         velocity= new Vector2 (0,0);
         transform.position = climbOverPos;
         canGrabLedge = true;
+        velocity.x = face * maxSpeed;
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {
@@ -451,24 +504,19 @@ public class PlayerController : MonoBehaviour
     #endregion
     //attacking
     #region Attack
-    private void HeadJump()
+    private void HeadJump(EnemyController enemy)
     {
-        if(Physics2D.OverlapCircle((Vector2)transform.position + bottomOffset, collisionRadius, enemyLayer))
+
+        enemy.TakeDamage(1);
+        if(direction.x != 0)
         {
-            //kill enemy we jumped on
-            Collider2D[] hits = Physics2D.OverlapCircleAll((Vector2)transform.position + bottomOffset, attackRadius, enemyLayer);
-            //fight with enemies
-            foreach (var hit in hits)
-            {
-                EnemyController enemy = hit.GetComponent<EnemyController>();
-                if (enemy != null)
-                {
-                    enemy.TakeDamage(1);
-                    velocity.y = headJumpForce;
-                }
-            }
+            velocity.x *= headJumpBoost;
         }
-        
+        velocity.y = headJumpForce;
+        rb.linearVelocity = velocity;
+        jumpPhase = 0;
+
+
     }
     private void Attack(InputAction.CallbackContext ctx)
     {
@@ -612,6 +660,16 @@ public class PlayerController : MonoBehaviour
         if (collision.gameObject.CompareTag("Finish"))
         {
             FinishLevel();
+        }
+        if (collision.contacts[0].normal.y > 0.5f)
+        {
+            EnemyController enemy = collision.gameObject.GetComponent<EnemyController>();
+            if (enemy != null)
+            {
+                HeadJump(enemy);
+
+
+            }
         }
     }
     private void OnTriggerStay2D(Collider2D collision)
