@@ -14,8 +14,10 @@ public class LevelManager : MonoBehaviour
     //Rating system
     [Header("Points & Time")]
     public int maxPoints;
+    [SerializeField, Range(0f, 1f)] private float goldPointsPercent = 0.9f;
+    [SerializeField, Range(0f, 1f)] private float silverPointsPercent = 0.6f;
     [SerializeField] private int playerPoints;
-    [SerializeField] private int secretsFound;
+    [SerializeField] private bool secret1Found, secret2Found, secret3Found;
     [SerializeField] private float timer;
     [SerializeField] private float goldTime;
     [SerializeField] private float silverTime;
@@ -43,10 +45,26 @@ public class LevelManager : MonoBehaviour
     {
         playerPoints += amount;
     }
+    public void UnlockSecret(int numb)
+    {
+        switch (numb)
+        {
+            case 1:
+                secret1Found = true;
+                break;
+            case 2: 
+                secret2Found = true;
+                break;
+                case 3:
+                secret3Found = true;
+                break;
+        }
+    }
     public void FinishLevel()
     {
       finishPanel.SetActive(true);
         bool[] currentStars = new bool[5];
+        //give stars for timeo or secrets found
         if (isTimeTrial)
         {
             if(timer <= goldTime) currentStars[0] = true;
@@ -55,14 +73,16 @@ public class LevelManager : MonoBehaviour
         }
         else
         {
-            float pointsPercent = (float)playerPoints / maxPoints * 100;
-            if (pointsPercent >= 90) currentStars[0] = true;
-            if(pointsPercent >= 60) currentStars[1] = true;
-            if(pointsPercent>= 40) currentStars[2] = true;
-
-            if(secretsFound>=1)currentStars[3] = true;  
-            if(secretsFound >= 2)currentStars[4] = true;
+            if (secret1Found) currentStars[0] = true;
+            if (secret2Found) currentStars[1] = true;
+            if (secret3Found) currentStars[2] = true;
         }
+        //give stars for collected points
+        float pointsPercent = (float)playerPoints / maxPoints;
+        if (pointsPercent >= goldPointsPercent) currentStars[3] = true;
+        if (pointsPercent >= silverPointsPercent) currentStars[4] = true;
+
+        
         PointsText.text ="Points: "+playerPoints.ToString();
         //display stars
         for (int i = 0; i < 5; i++)

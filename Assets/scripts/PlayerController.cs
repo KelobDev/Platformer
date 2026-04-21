@@ -69,6 +69,11 @@ public class PlayerController : MonoBehaviour
     [Header("Ledge grabbing")]
     [SerializeField] private Vector2 rightLedgeDetector, leftLedgeDetector;
     [SerializeField, Range(0f, 1f)] private float ledgeCollisionRadius = 0.25f;
+    [SerializeField, Range(0f, 1f)] private float ledgeGrabCooldownTime = 0.3f;
+    [SerializeField, Range(0f, 20f)] private float ledgeJumpForce = 12f;
+    [SerializeField, Range(0f, 1f)] private float LedgeClimbTime = 0.2f;
+    private float ledgeClimbTimer;
+    private float ledgeGrabCooldownTimer;
     private bool leftLedgeDetected = false, rightLedgeDetected = false;
     private bool canDetect;
     [SerializeField] private Vector2 ledgeOffset1, ledgeOffset2;
@@ -79,7 +84,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Vector2 attackPoint;
     [SerializeField, Range(0f, 1f)] private float attackRadius;
     [SerializeField] private Tilemap destructables;//for destroying elemmts by punching
+    [SerializeField, Range(0f, 1f)] private float attackBufferTime = 0.2f;
     private bool groundPound;
+    private float attackBufferTimer;
     private InputAction attack;
     //shooting
     private float holdTime;
@@ -227,7 +234,15 @@ public class PlayerController : MonoBehaviour
             if (!groundPound)
                 Move();
             CornerCorrection();
+            #region attacking
+            if(attackBufferTimer > 0)
+            {
+                attackBufferTimer-= Time.deltaTime;
+                ExectueAttack();
+                
+            }
             GroundPound();
+            #endregion
             #region jumping
             if (jump.ReadValue<float>() == 0 && velocity.y > 0.01 && jumped)
             {
@@ -280,12 +295,15 @@ public class PlayerController : MonoBehaviour
                     rb.gravityScale = downwardMovementMultiplier;
                 }
             }
+            if(ledgeClimbTimer > 0)
+                ledgeClimbTimer -= Time.deltaTime;
             if (desiredJump)
             {
-                if (canClimb)
+                if (canClimb && ledgeClimbTimer <= 0)
                 {
                     //system for now that I don't have an animation
-                    LedgeClimbOver();
+                    //LedgeClimbOver();
+                    LedgeJump();
                     return;
                 }
                 desiredJump = false;
@@ -433,14 +451,28 @@ public class PlayerController : MonoBehaviour
     #region ledge grab
     private void CheckForLedge()
     {
+        if (ledgeGrabCooldownTimer > 0)
+        {
+            ledgeGrabCooldownTimer -= Time.deltaTime;
+        }
+
 
         int dir = rightLedgeDetected ? 1 : -1;
 
         Vector2 detector = rightLedgeDetected ? rightLedgeDetector : leftLedgeDetector;
 
+        if (canClimb && direction.y < -0.5f)
+        {
+            ledgeClimbTimer = LedgeClimbTime;
+            canClimb = false;
+            canGrabLedge = true;
+            ledgeGrabCooldownTimer = ledgeGrabCooldownTime; // Uruchom cooldown
+            rb.gravityScale = downwardMovementMultiplier; // Przywróæ grawitacjê
+            return;
+        }
         //check if we're not trying to climb on ceeling
         bool notUnderGround = !Physics2D.OverlapCircle((Vector2)transform.position + ceelingOffset, collisionRadius, groundLayer);
-        if ((leftLedgeDetected || rightLedgeDetected) && canGrabLedge)
+        if ((leftLedgeDetected || rightLedgeDetected) && canGrabLedge&& ledgeGrabCooldownTimer <= 0)
         {
 
 
@@ -455,6 +487,10 @@ public class PlayerController : MonoBehaviour
 
                 canGrabLedge = false;
                 canClimb = true;
+
+                rb.linearVelocity = Vector2.zero;
+                velocity = Vector2.zero;
+
             }
             
         }
@@ -462,11 +498,23 @@ public class PlayerController : MonoBehaviour
         if (canClimb&&notUnderGround&&!onGround)
         {
             transform.position = climbBeginPos;
+            rb.gravityScale = 0;
             
         }
     }
+
+    private void LedgeJump()
+    {
+        canClimb=false;
+        canGrabLedge = true;
+        velocity.y = ledgeJumpForce;
+        ledgeGrabCooldownTimer = ledgeGrabCooldownTime;
+        rb.gravityScale = defaultGravityScale;
+        rb.linearVelocity = velocity;
+    }
     private void LedgeClimbOver()
     {
+        rb.gravityScale = defaultGravityScale;
         canClimb = false;
         velocity= new Vector2 (0,0);
         transform.position = climbOverPos;
@@ -520,16 +568,17 @@ public class PlayerController : MonoBehaviour
     }
     private void Attack(InputAction.CallbackContext ctx)
     {
-        
         if (onGround)
         {
-            ExectueAttack();
+            attackBufferTimer = attackBufferTime;
+            
         }
-        else if(!onGround && attackPoint.y <0)
+        else if (!onGround && attackPoint.y < 0)
         {
             //groundPound
             groundPound = true;
         }
+        //trigger attack animation
         
         
     }
@@ -554,25 +603,8 @@ public class PlayerController : MonoBehaviour
         }
 
         //destroy objects
-        Vector2 center = (Vector2)transform.position + attackPoint;
-        //iloœæ sprawdzanych punktów
-        int checks = 20;
-
-        for (int i = 0; i < checks; i++)
-        {
-            float angle = i * Mathf.PI * 2 / checks;
-            Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-
-            Vector2 point = center + dir * attackRadius;
-
-            Vector3Int cellPos = destructables.WorldToCell(point);
-            //sprawcamy czy nasz kafelek znajduje siê w zasiêgu punktu ataku
-            if (destructables.HasTile(cellPos))
-            {
-                destructables.SetTile(cellPos, null);
-                Debug.Log("Puk puk puk puk");
-            }
-        }
+        
+        
     }
     private void StartCharging(InputAction.CallbackContext ctx)
     {

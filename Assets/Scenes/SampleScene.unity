@@ -15208,14 +15208,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
-    - target: {fileID: 3910986523220613105, guid: bf7bc169c8eb8b642b08d110a862501c, type: 3}
-      propertyPath: m_Interpolate
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 3910986523220613105, guid: bf7bc169c8eb8b642b08d110a862501c, type: 3}
-      propertyPath: m_CollisionDetection
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 5358834520334251388, guid: bf7bc169c8eb8b642b08d110a862501c, type: 3}
       propertyPath: checkPoint
       value: 
@@ -15228,14 +15220,6 @@ PrefabInstance:
       propertyPath: cameraFollowObj
       value: 
       objectReference: {fileID: 1198826084}
-    - target: {fileID: 5358834520334251388, guid: bf7bc169c8eb8b642b08d110a862501c, type: 3}
-      propertyPath: jumpCutMultiplier
-      value: 0.7
-      objectReference: {fileID: 0}
-    - target: {fileID: 5358834520334251388, guid: bf7bc169c8eb8b642b08d110a862501c, type: 3}
-      propertyPath: apexHangTimeThreshold
-      value: 0.15
-      objectReference: {fileID: 0}
     - target: {fileID: 6617875334449738509, guid: bf7bc169c8eb8b642b08d110a862501c, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.98
